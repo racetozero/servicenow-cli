@@ -1,0 +1,100 @@
+[workspace]
+resolver = "3"
+members = ["crates/sn-core", "crates/sn-tui", "crates/sn"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.100"
+license = "MIT"
+repository = "https://github.com/racetozero/servicenow-cli"
+homepage = "https://github.com/racetozero/servicenow-cli"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.cargo]
+# dist writes `homepage` into the Homebrew formula.
+redundant_homepage = "allow"
+unused_dependencies = "deny"
+
+[workspace.lints.clippy]
+dbg_macro = "warn"
+todo = "warn"
+unimplemented = "warn"
+
+[workspace.dependencies]
+anyhow = "1"
+base64 = "0.22"
+bytes = "1"
+clap = { version = "4", features = ["derive", "string", "wrap_help", "env"] }
+# Dynamic completion is an unstable clap_complete feature; pin the exact version.
+clap_complete = { version = "=4.6.12", features = ["unstable-dynamic"] }
+comfy-table = { version = "8", default-features = false }
+csv = "1"
+dialoguer = { version = "0.12", default-features = false, features = ["password"] }
+dirs = "7"
+futures-util = { version = "0.3", default-features = false, features = ["std", "sink"] }
+getrandom = "0.4"
+jaq-core = "3.1.2"
+jaq-json = "2.0.3"
+jaq-std = "3.0.4"
+mimalloc = { version = "0.1", default-features = false }
+ratatui = "0.30"
+# `rustls` verifies with rustls-platform-verifier: the certificate store of
+# the operating system decides which servers are trusted.
+reqwest = { version = "0.13", default-features = false, features = [
+  "charset",
+  "form",
+  "gzip",
+  "http2",
+  "json",
+  "multipart",
+  "query",
+  "rustls",
+  "socks",
+  "stream",
+  "system-proxy",
+] }
+ring = "0.17"
+rustix = { version = "1", default-features = false, features = ["event", "std"] }
+rustls = { version = "0.23", default-features = false, features = ["std", "tls12", "aws_lc_rs"] }
+rustls-platform-verifier = "0.7"
+semver = { version = "1", features = ["serde"] }
+self-replace = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order", "raw_value"] }
+serde_yaml_ng = "0.10"
+sha2 = "0.11"
+sn-core = { path = "crates/sn-core", version = "0.1.0" }
+sn-tui = { path = "crates/sn-tui", version = "0.1.0" }
+tempfile = "3"
+thiserror = "2"
+tokio = { version = "1", features = [
+  "fs",
+  "io-std",
+  "io-util",
+  "macros",
+  "net",
+  "process",
+  "rt-multi-thread",
+  "signal",
+  "sync",
+  "time",
+] }
+# `__rustls-tls` takes a connector without a root store of its own: amb.rs
+# brings one that asks the operating system, as reqwest does.
+tokio-tungstenite = { version = "0.30", default-features = false, features = ["__rustls-tls", "handshake", "stream"] }
+toml = "1"
+unicode-width = "0.2"
+url = "2"
+wiremock = "0.6"
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
+strip = "symbols"
+
+# The profile cargo-dist builds release archives with.
+[profile.dist]
+inherits = "release"

@@ -1,0 +1,139 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$repo_root"
+
+usage() {
+  echo "Usage: scripts/release.sh <check|release> <version> [target]" >&2
+  echo "Example: scripts/release.sh check 0.2.0 aarch64-apple-darwin" >&2
+  exit 2
+}
+
+fail() {
+  echo "Release error: $*" >&2
+  exit 2
+}
+
+require_command() {
+  command -v "$1" >/dev/null 2>&1 || fail "$1 is required"
+}
+
+mode="${1:-}"
+version="${2:-}"
+target="${3:-}"
+
+case "$mode" in
+  check | release) ;;
+  *) usage ;;
+esac
+
+if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]; then
+  fail "version must be a Cargo SemVer value without the v prefix"
+fi
+
+require_command cargo
+require_command dist
+require_command git
+require_command jq
+
+host_target="$(rustc -vV | sed -n 's/^host: //p')"
+[[ -n "$host_target" ]] || fail "rustc did not report a host target"
+target="${target:-$host_target}"
+tag="v$version"
+
+verify_archive() {
+  local archive_name checksum_name binary_path
+
+  case "$target" in
+    *-windows-*) archive_name="sn-$target.zip" ;;
+    *) archive_name="sn-$target.tar.gz" ;;
+  esac
+  checksum_name="$archive_name.sha256"
+
+  [[ -f "target/distrib/$archive_name" ]] || fail "target/distrib/$archive_name was not built"
+  [[ -f "target/distrib/$checksum_name" ]] || fail "target/distrib/$checksum_name was not built"
+
+  if command -v sha256sum >/dev/null 2>&1; then
+    (cd target/distrib && sed '/^[[:space:]]*$/d' "$checksum_name" | sha256sum --check -)
+  elif command -v shasum >/dev/null 2>&1; then
+    (cd target/distrib && sed '/^[[:space:]]*$/d' "$checksum_name" | shasum -a 256 -c -)
+  else
+    fail "sha256sum or shasum is required to verify the archive"
+  fi
+
+  if [[ "$target" == "$host_target" ]]; then
+    binary_path="target/$target/dist/sn"
+    [[ "$target" == *-windows-* ]] && binary_path="$binary_path.exe"
+    [[ -x "$binary_path" ]] || fail "$binary_path is not executable"
+    "$binary_path" --version
+  fi
+
+  echo "Release archive is ready: target/distrib/$archive_name"
+}
+
+# Every published package carries the tag's version.
+check_versions() {
+  local found
+  found="$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].version')"
+  while IFS= read -r one; do
+    [[ -z "$one" || "$one" == "$version" ]] || \
+      fail "found version $one; set $version in Cargo.toml ([workspace.package] and the workspace dependencies)"
+  done <<< "$found"
+  grep -q "^## $version\b" CHANGELOG.md || \
+    fail "CHANGELOG.md has no '## $version' section; rename '## Unreleased' to '## $version'"
+}
+
+run_checks() {
+  echo "Checking release $tag for $target"
+  check_versions
+  dist plan --tag="$tag"
+  cargo fmt --all -- --check
+  cargo clippy --workspace --all-targets --all-features -- -D warnings
+  cargo nextest run --workspace --all-targets
+
+  dist build --allow-dirty --tag="$tag" --target="$target"
+
+  verify_archive
+}
+
+if [[ "$mode" == "check" ]]; then
+  run_checks
+  exit 0
+fi
+
+branch="$(git branch --show-current)"
+[[ "$branch" == "main" ]] || fail "release must run from the main branch"
+[[ -z "$(git status --porcelain=v1)" ]] || fail "commit or remove all worktree changes first"
+
+if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+  fail "$tag already exists on origin"
+else
+  remote_status=$?
+  [[ "$remote_status" -eq 2 ]] || fail "could not check $tag on origin"
+fi
+
+local_tag=false
+if git rev-parse --quiet --verify "refs/tags/$tag" >/dev/null; then
+  [[ "$(git rev-list -n 1 "$tag")" == "$(git rev-parse HEAD)" ]] || \
+    fail "local $tag does not point to HEAD"
+  local_tag=true
+fi
+
+run_checks
+[[ -z "$(git status --porcelain=v1)" ]] || fail "release checks changed the worktree"
+
+if [[ "${SN_RELEASE_CONFIRM:-}" != "$tag" ]]; then
+  [[ -t 0 ]] || fail "set SN_RELEASE_CONFIRM=$tag for a non-interactive release"
+  echo "This will push main and publish $tag."
+  read -r -p "Type $tag to continue: " confirmation
+  [[ "$confirmation" == "$tag" ]] || fail "release was cancelled"
+fi
+
+git push origin main
+if [[ "$local_tag" == false ]]; then
+  git tag -a "$tag" -m "sn $tag"
+fi
+git push origin "$tag"
+
+echo "Published $tag. GitHub Actions will create the release."

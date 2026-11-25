@@ -1,0 +1,18 @@
+sn CLI
+Copyright (c) 2026 racetozero. MIT License, see LICENSE.
+
+crates/sn-core/catalog/catalog.json is derived from the ServiceNow product
+documentation (https://github.com/ServiceNow/ServiceNowDocs), Copyright 2026
+ServiceNow, licensed under the Apache License, Version 2.0
+(https://www.apache.org/licenses/LICENSE-2.0). It was parsed, shortened and
+converted to JSON by scripts/build_catalog.py.
+
+The wire behaviour of undocumented endpoints (message bus, background scripts,
+XML export, impersonation, Flow Designer) was learned from these MIT-licensed
+projects:
+  https://github.com/tehubersheezy/servicenow-cli
+  https://github.com/rvben/servicenow-cli
+  https://www.npmjs.com/package/@servicenow/sdk-cli (Copyright (c) 2024 ServiceNow Inc.)
+
+This project is not affiliated with ServiceNow. ServiceNow is a trademark of
+ServiceNow, Inc.

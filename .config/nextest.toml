@@ -1,0 +1,8 @@
+# cargo nextest runs each test in its own process, in parallel.
+[profile.default]
+# Report tests slower than 30 s and stop any that hang for 2 minutes
+# (for example an MCP or HTTP test waiting on a closed pipe).
+slow-timeout = { period = "30s", terminate-after = 4 }
+
+[profile.ci]
+fail-fast = false

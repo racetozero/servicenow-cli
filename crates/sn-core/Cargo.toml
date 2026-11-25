@@ -1,0 +1,43 @@
+[package]
+name = "sn-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "ServiceNow profiles, sign-in and HTTP client used by the sn CLI"
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+base64.workspace = true
+bytes.workspace = true
+dirs.workspace = true
+getrandom.workspace = true
+reqwest.workspace = true
+ring.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+tempfile.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+toml.workspace = true
+url.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring = { version = "3.6", default-features = false, features = ["apple-native"] }
+
+[target.'cfg(windows)'.dependencies]
+keyring = { version = "3.6", default-features = false, features = ["windows-native"] }
+
+# zbus and the Rust crypto backend: no libdbus, so static musl builds work.
+[target.'cfg(target_os = "linux")'.dependencies]
+keyring = { version = "3.6", default-features = false, features = ["async-secret-service", "crypto-rust", "tokio"] }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }
+wiremock.workspace = true

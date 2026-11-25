@@ -1,0 +1,1444 @@
+## auth
+Start here: `auth login` connects an instance and saves it as a profile. A profile keeps the address and the sign-in, so later commands need no flags. `auth status` says whether it still works.
+$ sn auth login --instance acme
+$ sn auth status
+
+## auth login
+effect: local
+Opens your default browser (never a private or controlled window), so company SSO, device sign-in and browser extensions work. The link is always printed too: open it anywhere, then paste the code or the address of the last page. Other methods: basic, session (MFA), password, client-credentials, jwt, api-key, token, cookie, certificate.
+Agents: the first call returns `data.url` for the person to open. Finish with `--code`, or add `--wait` (with a client id) to wait for the browser.
+> Sign in through the browser and save the profile `prod`
+$ sn auth login --instance acme --profile prod
+> User name and password, read from stdin
+$ sn auth login -i acme --method basic --username ada --secret-stdin
+> Start as an agent, then finish with the code that the person gives
+$ sn auth login -i acme --agent
+$ sn auth login --code CODE --agent
+
+## auth logout
+effect: local
+Revokes the OAuth token on the instance, then removes the credential from this computer. The profile itself stays, so `auth login` signs in again without more settings.
+$ sn auth logout --profile prod
+> Remove it here and leave the token valid
+$ sn auth logout --local
+
+## auth status
+effect: read
+Shows the instance, the method, the user and the expiry of the token, and asks the instance whether the sign-in works. Exit code 2 means that you must sign in again.
+$ sn auth status
+> Look at the saved settings only
+$ sn auth status --offline --agent
+
+## auth refresh
+effect: local
+Exchanges the refresh token for a new access token. Commands do this by themselves; use it before a long job, or to test the refresh token.
+$ sn auth refresh --profile prod
+
+## auth token
+effect: local
+Prints the live credential so that curl or another tool can use the same sign-in. The output is a secret: do not log it or paste it into a chat.
+> A header line for curl
+$ sn auth token --as headers
+> Only the bearer token
+$ sn auth token --as bearer
+
+## auth switch
+effect: local
+Every command without `--profile` then uses this profile.
+$ sn auth switch prod
+
+## auth register
+effect: confirm
+For administrators, once per instance: creates the OAuth client (Application Registry, authorization code with PKCE) that lets the browser return to this computer by itself. Users then sign in with `--client-id` and paste nothing. `--print` shows the settings so that you can enter them by hand.
+$ sn auth register --print
+$ sn auth register --name "sn CLI" --yes
+
+## init
+effect: local
+Asks for the instance and how you sign in, signs in, and saves the profile. It takes the same flags as `auth login`.
+$ sn init
+$ sn init --instance acme
+
+## profile
+Each profile is one instance and one sign-in. Choose one with `--profile NAME`, `SN_PROFILE`, or `profile use`.
+$ sn profile list
+$ sn profile use prod
+
+## profile list
+effect: local
+Lists the saved profiles, their instances and methods, and which one is the default. Nothing is sent to an instance.
+$ sn profile list
+$ sn profile list --agent
+
+## profile show
+effect: local
+Prints the settings of a profile: address, method, proxy, certificates, read-only. Secrets are never printed.
+$ sn profile show prod
+
+## profile use
+effect: local
+Makes the profile the default, as `auth switch` does.
+$ sn profile use dev
+
+## profile add
+effect: local
+Signs in and saves the result under a name. It takes the flags of `auth login`.
+$ sn profile add dev --instance acmedev
+$ sn profile add ci -i acme --method api-key --secret-stdin
+
+## profile set
+effect: local
+Changes settings of a saved profile without signing in again. A read-only profile refuses every write, whatever the command or its flags say: use one for agents that must only look.
+$ sn profile set prod --profile-read-only true
+$ sn profile set prod --bypass-proxy localhost,.corp.example
+
+## profile remove
+effect: confirm-local
+Deletes the profile and its credential from this computer. The instance does not change.
+$ sn profile remove old --yes
+
+## profile login
+effect: local
+Signs in again with the settings of the selected profile. The same as `auth login`.
+$ sn profile login --profile prod
+
+## profile logout
+effect: local
+Removes the credential and keeps the profile. The same as `auth logout`.
+$ sn profile logout --profile prod
+
+## profile status
+effect: read
+Says whether the sign-in of the profile works. The same as `auth status`.
+$ sn profile status --profile prod
+
+## profile refresh
+effect: local
+Gets a new access token. The same as `auth refresh`.
+$ sn profile refresh --profile prod
+
+## config
+The configuration is one TOML file; secrets are kept apart from it. `SN_CONFIG_DIR` moves both.
+$ sn config path
+$ sn config show
+
+## config path
+effect: local
+Prints the full path of the configuration file, even when it does not exist yet.
+$ sn config path
+
+## config show
+effect: local
+Prints the profiles, the default and the aliases. Secrets are never printed.
+$ sn config show
+$ sn config show --jq '.profiles | keys'
+
+## config init
+effect: local
+Connects an instance step by step. The same as `init`.
+$ sn config init --instance acme
+
+## tui
+effect: depends
+Opens a full-screen workspace: queues on the left, records in the middle, and the record with its conversation, related records, files and SLAs. Each change is shown before it is sent. Press `?` for the keys. It needs a terminal, so agents use the other commands.
+$ sn tui
+> Start with one table and a filter
+$ sn tui incident --query 'active=true^priority=1'
+
+## get
+effect: read
+With a record: prints its fields, catalog variables, comments and work notes together. With one of the commands below: one piece of your context, such as your open work or the current update set.
+Returns one object for a record.
+> A record by number, link, or table and sys_id
+$ sn get INC0010001
+$ sn get incident:SYS_ID --agent
+> Your open work
+$ sn get mine
+
+## get scope
+effect: read
+Shows the application scope that new configuration records go into. Change it with `set scope`.
+$ sn get scope
+
+## get updateset
+effect: read
+Shows the state, the scope and the newest changes of an update set: the current one, or the one that you name.
+$ sn get updateset
+$ sn get updateset "Sprint 12" --all --agent
+
+## get property
+effect: read
+Reads a system property (sys_properties). A name that ends with `*` lists all that start with it. Values of private properties stay hidden by the instance.
+$ sn get property glide.ui.session_timeout
+$ sn get property 'glide.ui.*' --agent
+
+## get script
+effect: read
+Finds a script by name in script includes, business rules, client scripts, UI actions, UI scripts, scheduled jobs and fix scripts. Several matches are listed, so that you can choose one with `--type` or `--scope`.
+$ sn get script JSUtil
+> Only the source, into a file
+$ sn get script MyUtil --type include --source > MyUtil.js
+
+## get choices
+effect: read
+Lists the values and labels that a choice field accepts. Writes take the value.
+$ sn get choices incident.state
+$ sn get choices incident state --agent
+
+## get me
+effect: read
+Shows your user record, roles and groups. Use it to see why an action is refused.
+$ sn get me
+$ sn get me --jq '.roles'
+
+## get instance
+effect: read
+Shows the release, the patch and the node that answered.
+$ sn get instance
+
+## get mine
+effect: read
+Lists open tasks assigned to you, then unassigned tasks of your groups, newest first.
+$ sn get mine
+$ sn get mine --table incident --me-only --limit 10 --agent
+
+## get last
+effect: read
+Shows the task that you updated last. With `--table` it looks in another table, for example your last script.
+$ sn get last
+$ sn get last --table sys_script_include --fields name,sys_updated_on
+
+## get logs
+effect: read
+Reads the system log (syslog), newest first. Most instances allow it to administrators only.
+$ sn get logs --since 15m --level error
+$ sn get logs --grep MyUtil --since 2h --limit 50 --agent
+
+## table
+Works on every table that you can read. Find names with `schema tables`, columns with `schema columns TABLE`, and values with `choices TABLE FIELD`. The short form `sn table incident` lists, and `sn table incident:INC0010001` reads one record; writes are never implied.
+$ sn table list incident -q 'active=true^priority=1' -f number,short_description
+$ sn table get incident:INC0010001
+
+## table list
+effect: read
+Reads records that match an encoded query. Values are labels; `--display-value false` gives the raw values that queries and writes need. `meta.total` has the number of matches, and `meta.next` tells how to get the next page. The instance ignores a query term with a wrong field name, so check names first.
+Returns a list of records.
+$ sn table list incident -q 'priority=1^ORDERBYDESCsys_created_on' -f number,short_description -n 20
+> Fields of a referenced record
+$ sn table list incident -f number,caller_id.email --agent
+> Every match, one JSON record per line
+$ sn table list cmdb_ci_server --all -f name,ip_address > servers.jsonl
+
+## table get
+effect: read
+Reads one record. Name it by number, `table:number`, `table:sys_id`, a link from the browser, or a table and a sys_id.
+Returns one record.
+$ sn table get INC0010001
+$ sn table get incident SYS_ID -f number,state --display-value all --agent
+
+## table create
+effect: write
+Creates a record and returns it. `--field` sends raw values; add `--input-display-value` to send labels.
+$ sn table create incident -F short_description="VPN down" -F urgency=2
+> The whole record as JSON, and only look at the request
+$ sn table create u_asset -D @asset.json --dry-run --agent
+
+## table update
+effect: write
+Changes the fields that you name and leaves the others (PATCH). `name=` empties a field, and `name=@file` reads the value from a file.
+$ sn table update incident:INC0010001 -F state=2 -F work_notes="Checked the gateway"
+$ sn table update sys_script_include SYS_ID -F script=@MyUtil.js --agent
+
+## table replace
+effect: write
+Sends the record with PUT. On most tables the instance treats it as `update`; use `update` unless an integration needs PUT.
+$ sn table replace incident SYS_ID -D @incident.json
+
+## table delete
+effect: confirm
+Deletes one record for ever. It reads the record first and shows what it is.
+$ sn table delete u_asset SYS_ID
+$ sn table delete u_asset SYS_ID --yes --agent
+
+## table count
+effect: read
+Counts the matches on the server and reads no records. Use `aggregate` to group.
+$ sn table count incident -q active=true
+
+## gr
+effect: read
+Reads records and fields of their references in one GraphQL request, where the Table API needs several. Use it for deep dot-walks and when you want values and labels together.
+$ sn gr incident -f number,caller_id.manager.email -q active=true -n 20
+$ sn gr incident -q active=true --count --agent
+
+## aggregate
+effect: read
+Counts, sums and averages on the server, with groups. It is much faster than reading the records.
+> How many active incidents has each group, by priority
+$ sn aggregate incident -q active=true --group-by assignment_group,priority
+> Average and largest reassignment count
+$ sn aggregate incident --avg-fields reassignment_count --max-fields reassignment_count --agent
+> Only groups with more than three
+$ sn aggregate incident --group-by category --count --having 'count^category^>^3'
+
+## graphql
+effect: depends
+Sends a GraphQL document to the instance. A document with a mutation is a write: `--read-only` refuses it and `--dry-run` shows it. Errors in the answer are command errors.
+$ sn graphql '{ GlideRecord_Query { incident { _results { number { value } } } } }'
+$ sn graphql @query.graphql --var id=INC0010001 --agent
+
+## journal
+effect: read
+Prints the comments and work notes of a record, newest first, with the time and the author. Add one with `incident note`, or with `table update -F work_notes=...` on other tables.
+$ sn journal INC0010001
+$ sn journal change_request:CHG0030001 --work-notes --limit 5 --agent
+
+## variables
+Catalog variables are the answers that a person gave in a catalog form. They hang on the requested item (RITM), not in its fields.
+$ sn variables get RITM0010001
+
+## variables get
+effect: read
+Reads the variables of a requested item or a record producer's record. A catalog task shows those of its request item.
+$ sn variables get RITM0010001
+$ sn variables get SCTASK0010001 --agent
+
+## variables set
+effect: write
+Writes variables, reads them back, and fails when the instance did not store one. Values are raw: a sys_id for a reference, `true` or `false` for a checkbox.
+$ sn variables set RITM0010001 -F color=black -F needs_dock=true
+
+## attachment
+Files hang on records. An attachment has its own sys_id, which `attachment list` shows.
+$ sn attachment list INC0010001
+$ sn attachment upload INC0010001 screenshot.png
+
+## attachment list
+effect: read
+Lists the files of a record, with size, type and sys_id. Without a record it lists the files that `--query` matches.
+$ sn attachment list INC0010001
+$ sn attachment list --query 'table_name=incident^file_nameLIKElog' --agent
+
+## attachment get
+effect: read
+Reads the metadata of one file. `download` gets its content.
+$ sn attachment get SYS_ID
+
+## attachment upload
+effect: write
+Attaches a file to a record. The content type comes from the file's extension unless you give one.
+$ sn attachment upload INC0010001 screenshot.png
+$ sn attachment upload incident INC0010001 build.log --name "Build 42.log" --agent
+
+## attachment download
+effect: read
+Writes the file here, to a path, to a directory, or to stdout with `-`. It does not replace a file without `--force`.
+$ sn attachment download SYS_ID
+$ sn attachment download SYS_ID /tmp/ --force
+$ sn attachment download SYS_ID - > out.log
+
+## attachment delete
+effect: confirm
+Deletes one file. It shows the name and the record first.
+$ sn attachment delete SYS_ID --yes
+
+## watch
+effect: read
+Prints inserts, updates and deletes as they happen, through the instance's message bus. It runs until you stop it, so agents and scripts set a limit. With `--agent` each event is one JSON line.
+> Every change to critical incidents
+$ sn watch incident -q priority=1
+> One record, until its state changes once
+$ sn watch INC0010001 --on-change state --max-events 1
+> At most one minute, one JSON line for each event
+$ sn watch incident -q active=true --duration 60 --agent
+
+## open
+effect: local
+Opens a record or a list in your default browser. `--print-url` prints the address; `--agent` always does.
+$ sn open INC0010001
+$ sn open incident --query 'active=true^priority=1'
+$ sn open INC0010001 --print-url
+
+## xml
+The XML of an unload: the form in which administrators move records between instances.
+$ sn xml export incident number=INC0010001 --out incident.xml
+
+## xml export
+effect: read
+Exports the matching records with their journal and attachments. Writes to stdout unless `--out` names a file.
+$ sn xml export sys_script_include name=MyUtil --out MyUtil.xml
+$ sn xml export cmdb_ci_server 'name=web01' > web01.xml
+
+## xml import
+effect: confirm
+Loads an export file. It overwrites and deletes records without business rules or workflows, so it needs the administrator role and a careful look at the file first.
+$ sn xml import MyUtil.xml
+$ sn xml import MyUtil.xml --yes --agent
+
+## import
+Import sets load rows into a staging table, and transform maps write them to the target table.
+$ sn import create u_staging -F name=web01
+
+## import create
+effect: write
+Loads one row and returns what the transform did with it: the target record, or the error.
+$ sn import create u_server_import -F name=web01 -F ip=10.0.0.1
+
+## import bulk
+effect: write
+Loads many rows in one request. The instance can transform them later, so check the rows with `import get`.
+$ sn import bulk u_server_import --data @servers.json
+$ sn import bulk u_server_import --data '[{"name":"web01"},{"name":"web02"}]' --agent
+
+## import get
+effect: read
+Shows how one staging row was transformed: the target table, the record and the status.
+$ sn import get u_server_import SYS_ID
+
+## resolve
+Turns a name that a person uses into the sys_id that a write needs. A text that fits several records is an error that lists them.
+$ sn resolve user ada@example.com
+$ sn resolve group Network
+
+## resolve user
+effect: read
+Finds one user.
+$ sn resolve user ada.lovelace
+$ sn resolve user @me --agent
+
+## resolve group
+effect: read
+Finds one group.
+$ sn resolve group "Service Desk"
+
+## resolve record
+effect: read
+Finds the table and the sys_id of a record.
+$ sn resolve record INC0010001
+$ sn resolve record cmdb_ci_server:SYS_ID --agent
+
+## incident
+The everyday work on incidents. Labels work everywhere (`--impact High`), people and groups can be names, and a wrong label is an error that lists the right ones.
+$ sn incident mine
+$ sn incident show INC0010001
+$ sn incident resolve INC0010001 --code "Solution provided" --notes "Restarted"
+
+## incident list
+effect: read
+Lists incidents, the last updated first, with the columns that matter. Use `-f` for other columns.
+$ sn incident list --active -n 20
+$ sn incident list -q 'priority=1^assignment_group.name=Network' --agent
+
+## incident mine
+effect: read
+Lists the active incidents assigned to you.
+$ sn incident mine
+$ sn incident mine --inactive --agent
+
+## incident show
+effect: read
+Prints one incident with its important fields. `get INC...` adds the conversation and the variables.
+$ sn incident show INC0010001
+$ sn incident show INC0010001 -f number,state,assigned_to --display-value all --agent
+
+## incident create
+effect: write
+Creates an incident and returns its number. On a terminal it asks for what is missing. Other fields go through `--field`.
+$ sn incident create --short-description "VPN down" --impact High --caller ada@example.com
+$ sn incident create --short-description "VPN down" -F location=Paris --agent
+
+## incident update
+effect: write
+Changes the fields that you name and leaves the others.
+$ sn incident update INC0010001 --urgency High --work-notes "Affects the whole floor"
+$ sn incident update INC0010001 --state "On Hold" -F hold_reason=1 --agent
+
+## incident resolve
+effect: write
+Sets the state to Resolved with a code and notes. The code is required: without it, a terminal offers the choices, and an agent gets `input_required` with the valid codes.
+$ sn incident resolve INC0010001 --code "Solution provided" --notes "Restarted the gateway"
+$ sn incident resolve INC0010001 --code "Solution provided" --notes-file fix.md --agent
+
+## incident close
+effect: confirm
+Closes a resolved incident. A closed incident cannot be opened again.
+$ sn incident close INC0010001
+$ sn incident close INC0010001 --yes --agent
+
+## incident reopen
+effect: write
+Puts a resolved incident back to In Progress. A closed one cannot be opened again.
+$ sn incident reopen INC0010001 --note "The error is back"
+
+## incident edit
+effect: confirm
+Opens the incident as YAML in your editor, shows the difference, and asks before it sends only the changed fields. With `--file` it takes the YAML from a file and opens no editor.
+$ sn incident edit INC0010001
+$ sn incident edit INC0010001 --file changed.yaml --yes --agent
+
+## incident note
+effect: write
+Adds a work note, which only your company sees. `--comment` adds a comment, which the customer sees.
+$ sn incident note INC0010001 "Checked the gateway"
+$ sn incident note INC0010001 "We are on it" --comment
+$ sn incident note INC0010001 --file - < note.md
+
+## incident assign
+effect: write
+Assigns the incident to a person, a group, or both.
+$ sn incident assign INC0010001 --to @me
+$ sn incident assign INC0010001 --group Network --to ada@example.com --agent
+
+## incident open
+effect: local
+Opens the incident in your default browser, or prints the link.
+$ sn incident open INC0010001
+$ sn incident open INC0010001 --print
+
+## incident watch
+effect: read
+Looks at the incident again and again and prints the fields that changed. `watch INC...` uses the message bus instead and is quicker.
+$ sn incident watch INC0010001 --interval 10
+$ sn incident watch INC0010001 --fields state,assigned_to --count 6 --agent
+
+## change
+Change requests of every type, through the Change Management API. A change can be a number, a sys_id, or a link.
+$ sn change list -q 'active=true'
+$ sn change create --type normal -F short_description="Patch web01"
+
+## change list
+effect: read
+Lists change requests. This API cannot sort; use `table list change_request` for that.
+$ sn change list --type emergency -n 10
+$ sn change list -q 'state=-1^assigned_to=javascript:gs.getUserID()' --agent
+
+## change get
+effect: read
+Reads one change request.
+$ sn change get CHG0030001
+$ sn change get CHG0030001 -f number,state,risk,start_date --agent
+
+## change create
+effect: write
+Creates a normal, emergency or standard change. A standard change needs the template from `change templates`.
+$ sn change create --type normal -F short_description="Patch web01" -F assignment_group=Network
+$ sn change create --type standard --template SYS_ID --agent
+
+## change update
+effect: write
+Changes the fields that you name. `change nextstates` says which states are allowed now.
+$ sn change update CHG0030001 -F state=-4
+$ sn change update CHG0030001 -F start_date="2026-12-01 20:00:00" --agent
+
+## change delete
+effect: confirm
+Deletes a change request for ever. Most processes cancel a change instead (`change update -F state=4`).
+$ sn change delete CHG0030001 --yes
+
+## change nextstates
+effect: read
+Lists the states that the change can move to now, with their labels.
+$ sn change nextstates CHG0030001
+
+## change approvals
+effect: write
+Approves or rejects the change as you, for the approvals that wait for you.
+$ sn change approvals CHG0030001 -F state=approved
+$ sn change approvals CHG0030001 -F state=rejected -F comments="No rollback plan" --agent
+
+## change risk
+effect: write
+Runs the risk calculation of the instance and stores the result on the change.
+$ sn change risk CHG0030001
+
+## change schedule
+effect: read
+Finds time windows that fit the maintenance and blackout schedules.
+$ sn change schedule CHG0030001
+
+## change task
+The tasks (CTASK) of a change request.
+$ sn change task list CHG0030001
+
+## change task list
+effect: read
+Lists the tasks of the change.
+$ sn change task list CHG0030001 --agent
+
+## change task get
+effect: read
+Reads one task of the change.
+$ sn change task get CHG0030001 CTASK0010001
+
+## change task create
+effect: write
+Adds a task to the change.
+$ sn change task create CHG0030001 -F short_description="Check the backup"
+
+## change task update
+effect: write
+Changes the fields of a task that you name.
+$ sn change task update CHG0030001 CTASK0010001 -F state=3 --agent
+
+## change task delete
+effect: confirm
+Deletes a task for ever.
+$ sn change task delete CHG0030001 CTASK0010001 --yes
+
+## change ci
+The configuration items that a change touches: affected, impacted, or offerings.
+$ sn change ci list CHG0030001
+
+## change ci list
+effect: read
+Lists the configuration items of the change.
+$ sn change ci list CHG0030001
+
+## change ci add
+effect: write
+Adds configuration items by sys_id. The instance does this in the background and returns a worker.
+$ sn change ci add CHG0030001 -F association_type=affected -F cmdb_ci_sys_ids=SYS_ID
+
+## change conflict
+Conflicts with other changes and with maintenance windows.
+$ sn change conflict add CHG0030001
+$ sn change conflict get CHG0030001
+
+## change conflict get
+effect: read
+Shows the state of the check and the conflicts that it found.
+$ sn change conflict get CHG0030001 --agent
+
+## change conflict add
+effect: write
+Starts a conflict check. Read the result with `conflict get`.
+$ sn change conflict add CHG0030001
+
+## change conflict remove
+effect: confirm
+Stops a running check and removes all conflicts of the change.
+$ sn change conflict remove CHG0030001 --yes
+
+## change models
+effect: read
+Lists the change models, or shows one.
+$ sn change models
+$ sn change models SYS_ID --agent
+
+## change templates
+effect: read
+Lists the templates for standard changes, or shows one. `change create --type standard --template` takes the sys_id.
+$ sn change templates
+
+## approval
+Approvals that wait for you, for every kind of record: changes, requests, knowledge and more.
+$ sn approval list
+$ sn approval approve CHG0030001 --comment "Looks good"
+
+## approval list
+effect: read
+Lists the approvals that wait for you, with the record and who asked. `--everyone` and `--state` widen the list.
+$ sn approval list
+$ sn approval list --state approved --everyone -n 10 --agent
+
+## approval show
+effect: read
+Shows one approval and the record that it is for.
+$ sn approval show CHG0030001
+
+## approval approve
+effect: confirm
+Approves as you, after it shows what you approve. Pass the sys_id of the approval, or the record that waits.
+$ sn approval approve CHG0030001 --comment "Looks good"
+$ sn approval approve SYS_ID --yes --agent
+
+## approval reject
+effect: confirm
+Rejects as you. A comment is required, because the person who asked sees it.
+$ sn approval reject CHG0030001 --comment "The rollback plan is missing"
+$ sn approval reject CHG0030001 --comment "The rollback plan is missing" --yes --agent
+
+## catalog
+Find an item, see which variables it takes, try the order with `--dry-run`, then order. Agents do not repeat an order after a lost answer: look at `catalog requests mine` first.
+$ sn catalog search laptop
+$ sn catalog show "Standard Laptop"
+$ sn catalog order "Standard Laptop" --var color=black --dry-run
+
+## catalog search
+effect: read
+Finds items, record producers and order guides that you may see. Without a text it lists them all.
+$ sn catalog search laptop
+$ sn catalog search "new user" --limit 5 --agent
+
+## catalog show
+effect: read
+Shows an item and each variable: its name, type, choices, whether it is mandatory, and when it appears.
+$ sn catalog show "Standard Laptop"
+$ sn catalog show SYS_ID --agent
+
+## catalog order
+effect: confirm
+The instance accepts wrong choices, references to the wrong table and unknown names without a word, so every value is checked first. Then it shows the order and asks. Pass values with `--var`, and secrets with `--vars-file`. With `--data` or `--field` the body is sent as it is, without checks. `--dry-run` does everything except the order. Returns the request number.
+$ sn catalog order "Standard Laptop" --var color=black --var ram=32 --dry-run
+$ sn catalog order "Standard Laptop" --vars-file laptop.yaml --requested-for ada --yes --agent
+
+## catalog cart
+effect: read
+The cart is the one that you see in the portal.
+$ sn catalog cart
+$ sn catalog cart submit --dry-run
+
+## catalog cart show
+effect: read
+Shows the items of the cart and the total. The instance makes an empty cart when you have none.
+$ sn catalog cart show --agent
+
+## catalog cart submit
+effect: confirm
+Shows what is in the cart, checks that it did not change, and orders all of it.
+$ sn catalog cart submit
+$ sn catalog cart submit --yes --agent
+
+## catalog cart remove
+effect: confirm
+Removes one item from the cart.
+$ sn catalog cart remove SYS_ID --yes
+
+## catalog cart clear
+effect: confirm
+Removes all items from the cart.
+$ sn catalog cart clear --yes
+
+## catalog requests
+effect: read
+What you ordered, and with which answers.
+$ sn catalog requests mine --open
+$ sn catalog requests vars RITM0010001
+
+## catalog requests mine
+effect: read
+Lists the items that you requested or opened, newest first, with stage and state.
+$ sn catalog requests mine --open
+$ sn catalog requests mine --limit 5 --agent
+
+## catalog requests vars
+effect: read
+Prints the answers of a requested item in the form that `catalog order --vars-file` takes, so that you can order the same again.
+$ sn catalog requests vars RITM0010001 -o yaml > laptop.yaml
+
+## catalog list
+effect: read
+Lists the catalogs that you may see.
+$ sn catalog list
+
+## catalog get
+effect: read
+Reads one catalog.
+$ sn catalog get SYS_ID
+
+## catalog categories
+effect: read
+Lists the categories of a catalog.
+$ sn catalog categories SYS_ID --top-level-only
+
+## catalog category
+effect: read
+Reads one category with its subcategories.
+$ sn catalog category SYS_ID
+
+## catalog items
+effect: read
+Lists items as the API returns them, with filters for catalog, category and type. `catalog search` is the shorter way for a person.
+$ sn catalog items --text laptop --limit 5 --agent
+
+## catalog item
+effect: read
+Reads an item as the API returns it. `catalog show` also explains its variables.
+$ sn catalog item SYS_ID
+
+## catalog item-variables
+effect: read
+Reads the variables of an item as the API returns them.
+$ sn catalog item-variables SYS_ID --agent
+
+## catalog add-to-cart
+effect: write
+Puts an item into the cart with the body that you give, without the checks of `catalog order`.
+$ sn catalog add-to-cart SYS_ID -D '{"sysparm_quantity":"1","variables":{"color":"black"}}'
+
+## catalog cart-update
+effect: write
+Changes the quantity or the variables of an item in the cart.
+$ sn catalog cart-update SYS_ID -D '{"sysparm_quantity":"2"}'
+
+## catalog cart-remove
+effect: confirm
+Removes an item from the cart. The same as `catalog cart remove`.
+$ sn catalog cart-remove SYS_ID --yes
+
+## catalog cart-empty
+effect: confirm
+Empties a cart by its sys_id.
+$ sn catalog cart-empty SYS_ID --yes
+
+## catalog checkout
+effect: confirm
+Checks the cart out. An instance with one-step checkout orders at this point.
+$ sn catalog checkout --yes
+
+## catalog submit-order
+effect: confirm
+Orders the cart as it is. `catalog cart submit` shows and checks it first.
+$ sn catalog submit-order --yes
+
+## catalog wishlist
+effect: read
+Lists the items that you saved for later.
+$ sn catalog wishlist
+
+## knowledge
+Find and read articles. An agent should read the article with `knowledge get --text` before it quotes it.
+$ sn knowledge search "reset password"
+$ sn knowledge get KB0000011
+
+## knowledge search
+effect: read
+Finds articles by text, best match first.
+$ sn knowledge search "vpn error 800" --limit 5
+$ sn knowledge search vpn --filter workflow_state=published --language en --agent
+
+## knowledge list
+effect: read
+Lists articles: all, the featured ones, or the most viewed ones.
+$ sn knowledge list --most-viewed --limit 10
+
+## knowledge get
+effect: read
+Reads an article. It does not count as a view unless you add `--update-view`.
+$ sn knowledge get KB0000011
+$ sn knowledge get KB0000011 --text --agent
+
+## cmdb
+Configuration items through the CMDB Instance API, which knows classes and relations. The short form `sn cmdb cmdb_ci_server` lists a class.
+$ sn cmdb list cmdb_ci_server -q 'nameLIKEweb'
+$ sn cmdb meta cmdb_ci_server
+
+## cmdb list
+effect: read
+Lists the configuration items of a class (names and sys_ids).
+$ sn cmdb list cmdb_ci_linux_server --limit 20
+$ sn cmdb list cmdb_ci_server -q 'operational_status=1' --agent
+
+## cmdb get
+effect: read
+Reads a configuration item with its attributes and its relations in both directions.
+$ sn cmdb get cmdb_ci_server:SYS_ID --agent
+
+## cmdb create
+effect: write
+Creates a configuration item through identification rules, so an item that exists already is updated instead.
+$ sn cmdb create cmdb_ci_linux_server -F name=web01 -F serial_number=A1
+$ sn cmdb create cmdb_ci_linux_server -D @server.json --source Other --agent
+
+## cmdb update
+effect: write
+Changes attributes of a configuration item.
+$ sn cmdb update cmdb_ci_server SYS_ID -F operational_status=2
+
+## cmdb meta
+effect: read
+Shows the attributes, the identification rules and the allowed relations of a class. Read it before you create one.
+$ sn cmdb meta cmdb_ci_server --agent
+
+## cmdb relation
+Relations are typed and have a direction; `cmdb get` lists them with their sys_ids.
+$ sn cmdb get cmdb_ci_server:SYS_ID
+
+## cmdb relation add
+effect: write
+Adds inbound or outbound relations to a configuration item. The body is {"outbound_relations":[{"type":ID,"target":ID}],"source":"Other"}.
+$ sn cmdb relation add cmdb_ci_server SYS_ID -D @relations.json
+
+## cmdb relation delete
+effect: confirm
+Deletes one relation; the configuration items stay.
+$ sn cmdb relation delete cmdb_ci_server SYS_ID TARGET_ID --yes
+
+## identify
+The Identification and Reconciliation Engine decides whether data matches an item that exists. Ask with `query` first.
+$ sn identify query -D '{"items":[{"className":"cmdb_ci_server","values":{"name":"web01"}}]}'
+
+## identify create-update
+effect: write
+Creates or updates the configuration items of the payload.
+$ sn identify create-update -D @items.json --data-source ServiceNow
+
+## identify query
+effect: read
+Shows which items the payload would create or update, and changes nothing.
+$ sn identify query -D @items.json --agent
+
+## identify create-update-enhanced
+effect: write
+As `create-update`, with options for partial payloads and partial commits.
+$ sn identify create-update-enhanced -D @items.json --options partial_commits:true
+
+## identify query-enhanced
+effect: read
+As `query`, with options; changes nothing.
+$ sn identify query-enhanced -D @items.json --options partial_payloads:true --agent
+
+## scores
+Scorecards of Performance Analytics (indicators and their scores).
+$ sn scores list --key --per-page 10
+
+## scores list
+effect: read
+Lists scorecards with their current value, target and change. `--include-scores` adds the values over time.
+$ sn scores list --contains incident --per-page 10
+$ sn scores list --uuid SYS_ID --include-scores --from 2026-01-01 --agent
+
+## scores favorite
+effect: write
+Adds a scorecard to your favorites.
+$ sn scores favorite SYS_ID
+
+## scores unfavorite
+effect: write
+Removes a scorecard from your favorites.
+$ sn scores unfavorite SYS_ID
+
+## schema
+Ask the instance before you guess: a query with a wrong column name is ignored, not refused. The short form `sn schema incident` lists columns.
+$ sn schema tables --filter change
+$ sn schema columns incident --mandatory
+
+## schema tables
+effect: read
+Lists tables with their labels and parents.
+$ sn schema tables --filter asset
+$ sn schema tables --filter cmdb_ci_ --offline --agent
+
+## schema columns
+effect: read
+Lists the columns of a table, inherited ones too: name, label, type, reference, and whether they are mandatory or read-only.
+$ sn schema columns incident
+$ sn schema columns incident --references-only --agent
+
+## schema choices
+effect: read
+Lists the values and labels of a choice column.
+$ sn schema choices incident state
+
+## choices
+effect: read
+Lists the values and labels of a choice field. Queries and writes take the value.
+$ sn choices incident state
+$ sn choices change_request type --agent
+
+## cache
+A copy of table and column names on this computer. Shell completion and `--offline` use it.
+$ sn cache refresh
+
+## cache refresh
+effect: read
+Reads all tables and columns of the instance and saves their names. Columns need the admin role; without it, tables are still saved.
+$ sn cache refresh
+
+## cache status
+effect: local
+Shows where the copy is, how old it is, and how many tables it has.
+$ sn cache status
+
+## cache tables
+effect: local
+Lists table names from the copy, without the network.
+$ sn cache tables cmdb_ci_
+
+## cache columns
+effect: local
+Lists the columns of a table from the copy, inherited ones too.
+$ sn cache columns incident
+
+## set
+Your session on the instance has a current scope and a current update set. Configuration changes go there.
+$ sn set scope x_acme_app
+$ sn set updateset "Sprint 12"
+
+## set scope
+effect: write
+Switches your current application scope. `get scope` shows it.
+$ sn set scope x_acme_app
+$ sn set scope global --agent
+
+## set updateset
+effect: write
+Switches your current update set. It must be in progress and in the current scope.
+$ sn set updateset "Sprint 12"
+
+## flow
+Flow Designer from the outside: what a flow does, when it ran, and why it did not.
+$ sn flow list --active
+$ sn flow runs "Assign VIP" --errors
+$ sn flow why-not "Assign VIP" --record INC0010001
+
+## flow list
+effect: read
+Lists flows and subflows with scope, status and type.
+$ sn flow list --active --type flow
+$ sn flow list --scope x_acme_app --status draft --agent
+
+## flow get
+effect: read
+Reads a flow: its triggers, inputs, outputs and steps. `--outline` is short.
+$ sn flow get "Assign VIP" --outline
+$ sn flow get global.assign_vip --agent
+
+## flow versions
+effect: read
+Lists the saved and published versions of a flow.
+$ sn flow versions "Assign VIP"
+
+## flow runs
+effect: read
+Lists runs, newest first. Filter by record, state or time. `flow debug` takes the sys_id of a run.
+$ sn flow runs "Assign VIP" --since 24h
+$ sn flow runs --record INC0010001 --errors --agent
+
+## flow debug
+effect: read
+Puts the state, the failed step and the log of one run together. Start here when a flow failed.
+$ sn flow debug SYS_ID
+$ sn flow debug SYS_ID --log-lines 50 --agent
+
+## flow steps
+effect: read
+Lists the steps of one run with their state and time. `--values` needs a flow that records at level FULL.
+$ sn flow steps SYS_ID --failed
+
+## flow logs
+effect: read
+Prints the log of one run.
+$ sn flow logs SYS_ID --level error
+
+## flow why-not
+effect: read
+Checks why a flow did not start for a record: inactive, not published, a subflow, no active trigger, another table, or a trigger condition that the record does not meet. It also lists recent runs for the record.
+$ sn flow why-not "Assign VIP" --record INC0010001
+$ sn flow why-not global.assign_vip --record INC0010001 --agent
+
+## flow tail
+effect: read
+Prints runs of a flow as they happen. It runs until you stop it, so agents set a limit.
+$ sn flow tail "Assign VIP" --errors
+$ sn flow tail "Assign VIP" --duration 60 --agent
+
+## decision
+Decision tables: rules that map inputs to an answer.
+$ sn decision show "Assignment rules"
+
+## decision list
+effect: read
+Lists decision tables.
+$ sn decision list -q 'nameLIKEassign'
+
+## decision show
+effect: read
+Shows the inputs, the possible answers, and the decisions in their order.
+$ sn decision show "Assignment rules" --agent
+
+## decision run
+effect: read
+Evaluates a table with the inputs that you give and shows the decision that matches.
+$ sn decision run "Assignment rules" --input priority=1 --input category=network
+$ sn decision run "Assignment rules" --input priority=1 --all-matches --agent
+
+## playbook
+Playbooks (Process Automation Designer) that run on a record.
+$ sn playbook list INC0010001
+
+## playbook list
+effect: read
+Lists the playbooks of a record with their state and `playbook_id`.
+$ sn playbook list INC0010001 --agent
+
+## playbook trigger
+effect: write
+Starts a playbook for a record by its scoped name. The instance does not check that the playbook fits the table.
+$ sn playbook trigger INC0010001 --scoped-name sn_vsc.task_steps_5 --only-if-none
+
+## playbook launch
+effect: write
+Starts a playbook by the sys_id of its process definition.
+$ sn playbook launch SYS_ID --record TARGET_ID --input reason=manual
+
+## script
+Server-side JavaScript, as in Scripts - Background.
+$ sn script run 'gs.info(gs.getUserName())'
+
+## script run
+effect: confirm
+Runs JavaScript on the server as your user, so it can change or delete anything that you can. Print with gs.info(...); print JSON.stringify(x) to get data back. The run is recorded so that it can be rolled back. A timeout here does not stop the script there.
+$ sn script run 'gs.info(gs.getUserName())'
+> From a file, in an application scope, without a question
+$ sn script run --file cleanup.js --scope x_acme_app --reason CHG0030001 --yes --agent
+
+## exec
+effect: confirm
+The short form of `script run`.
+$ sn exec 'gs.info(gs.getUserName())' --yes
+$ sn exec --file cleanup.js --scope x_acme_app --reason CHG0030001 --yes --agent
+
+## codesearch
+effect: read
+Searches the text of scripts on the instance with its code search (Studio), grouped by table and record.
+$ sn codesearch MyUtil
+$ sn codesearch 'gs.sleep' --table sys_script_include --agent
+
+## appmanager
+Applications and plugins, as the Application Manager shows them.
+$ sn appmanager list --updates
+$ sn appmanager search "document management"
+
+## appmanager list
+effect: read
+Lists the installed applications and plugins; `--available` and `--updates` change the list.
+$ sn appmanager list --kind plugin --limit 20
+$ sn appmanager list --updates --agent
+
+## appmanager search
+effect: read
+Finds applications and plugins by text.
+$ sn appmanager search itsm --available
+
+## appmanager show
+effect: read
+Shows one application or plugin: version, state, dependencies.
+$ sn appmanager show com.snc.document_management
+
+## appmanager install
+effect: confirm
+Activates a plugin. It cannot be deactivated again, so try it on a development instance first.
+$ sn appmanager install com.snc.document_management
+$ sn appmanager install com.snc.document_management --wait --yes --agent
+
+## cicd
+The CI/CD API. Operations run in the background and return a progress id: add `--wait` to wait for the end (a failure is then an error with exit code 1), or ask with `cicd progress`.
+$ sn cicd app install --scope x_acme_app --version 1.2.0 --wait
+$ sn cicd atf run --suite-name Regression --wait
+
+## cicd app
+Applications in the application repository. In a project directory, the scope and version come from now.config.json and package.json.
+$ sn cicd app publish --version 1.2.0 --wait
+
+## cicd app install
+effect: write
+Installs a version of an application from the repository.
+$ sn cicd app install --scope x_acme_app --version 1.2.0 --wait --agent
+
+## cicd app publish
+effect: write
+Publishes the application as a new version to the repository.
+$ sn cicd app publish --scope x_acme_app --version 1.2.0 --dev-notes "Fix assignment" --wait
+
+## cicd app rollback
+effect: confirm
+Goes back to an earlier version. Data that the newer version added can be lost.
+$ sn cicd app rollback --scope x_acme_app --version 1.1.0 --wait --yes
+
+## cicd updateset
+Move configuration between instances: retrieve, preview, commit.
+$ sn cicd updateset preview SYS_ID --wait
+
+## cicd updateset create
+effect: write
+Creates an update set.
+$ sn cicd updateset create --name "Sprint 12" --scope x_acme_app
+
+## cicd updateset retrieve
+effect: write
+Loads an update set from another instance.
+$ sn cicd updateset retrieve --update-set-id SYS_ID --update-source-id SOURCE_ID --wait
+
+## cicd updateset preview
+effect: write
+Previews a loaded update set and finds conflicts.
+$ sn cicd updateset preview SYS_ID --wait --agent
+
+## cicd updateset commit
+effect: write
+Commits a previewed update set to the instance.
+$ sn cicd updateset commit SYS_ID --wait
+
+## cicd updateset commit-multiple
+effect: write
+Commits several loaded update sets in the order that you give.
+$ sn cicd updateset commit-multiple --ids SYS_ID,OTHER_ID --wait
+
+## cicd updateset back-out
+effect: confirm
+Undoes a committed update set.
+$ sn cicd updateset back-out --update-set-id SYS_ID --wait --yes
+
+## cicd atf
+Test suites of the Automated Test Framework.
+$ sn cicd atf run --suite-name Regression --wait
+
+## cicd atf run
+effect: write
+Runs a suite. With `--wait`, failed tests make the command fail with `check_failed` (exit code 1).
+$ sn cicd atf run --suite-name Regression --wait
+$ sn cicd atf run --suite-id SYS_ID --browser-name chrome --run-in-cloud --wait --agent
+
+## cicd atf watch
+effect: read
+Waits for a run that was started without `--wait`, and shows its result.
+$ sn cicd atf watch SYS_ID --wait-timeout 1800
+
+## cicd atf results
+effect: read
+Shows the result of a run: counts, and each test that failed.
+$ sn cicd atf results SYS_ID --agent
+
+## cicd test
+Single tests of the Automated Test Framework.
+$ sn cicd test run --test-name "Create incident" --wait
+
+## cicd test run
+effect: write
+Runs one test.
+$ sn cicd test run --test-name "Create incident" --wait
+$ sn cicd test run --test-id SYS_ID --run-in-cloud --wait --agent
+
+## cicd test watch
+effect: read
+Waits for a run of a test and shows its result.
+$ sn cicd test watch SYS_ID
+
+## cicd test result
+effect: read
+Shows the result of a run of a test.
+$ sn cicd test result SYS_ID
+
+## cicd test logs
+effect: read
+Prints the log of a run of a test.
+$ sn cicd test logs SYS_ID --pattern 'ERROR|FAIL' --limit 100
+
+## cicd batch
+Several applications and plugins in one installation.
+$ sn cicd batch install --name "Release 5" --plugin com.snc.change_management --wait
+
+## cicd batch install
+effect: write
+Installs the packages in one operation. Returns a rollback id.
+$ sn cicd batch install --name "Release 5" --app SYS_ID@1.2.0 --wait
+$ sn cicd batch install -D @release.json --wait --agent
+
+## cicd batch results
+effect: read
+Shows the result of each package of a batch installation.
+$ sn cicd batch results SYS_ID
+
+## cicd batch rollback
+effect: confirm
+Undoes a batch installation.
+$ sn cicd batch rollback SYS_ID --wait --yes
+
+## cicd plugin
+Plugins, through the CI/CD API.
+$ sn cicd plugin activate com.snc.change_management --wait
+
+## cicd plugin activate
+effect: confirm
+Activates a plugin. It cannot be deactivated again.
+$ sn cicd plugin activate com.snc.change_management --wait --yes
+
+## cicd plugin rollback
+effect: confirm
+Goes back to the version before the last activation or upgrade.
+$ sn cicd plugin rollback com.snc.change_management --wait --yes
+
+## cicd scan
+Instance scans: checks of configuration and code.
+$ sn cicd scan point --table sys_script_include --sys-id SYS_ID --wait
+
+## cicd scan full
+effect: write
+Scans the whole instance. This can take long.
+$ sn cicd scan full --wait --wait-timeout 3600
+
+## cicd scan point
+effect: write
+Scans one record.
+$ sn cicd scan point --table sys_script_include --sys-id SYS_ID --wait --agent
+
+## cicd scan suite
+effect: write
+Runs a scan suite over applications or update sets.
+$ sn cicd scan suite SYS_ID --apps TARGET_ID --wait
+
+## cicd scan combo
+effect: write
+Runs a saved combination of a suite and its targets.
+$ sn cicd scan combo SYS_ID --wait
+
+## cicd scan results
+effect: read
+Shows the result of a scan.
+$ sn cicd scan results SYS_ID
+
+## cicd sc
+Applications that are linked to a Git repository.
+$ sn cicd sc apply --scope x_acme_app --branch main --wait
+
+## cicd sc apply
+effect: write
+Applies the newest commit of a branch to the application. Local changes are stashed.
+$ sn cicd sc apply --scope x_acme_app --branch main --wait
+
+## cicd sc apply-stash
+effect: write
+Applies a stash that an earlier `sc apply` made.
+$ sn cicd sc apply-stash SYS_ID --wait
+
+## cicd sc import
+effect: write
+Imports an application from a Git repository.
+$ sn cicd sc import --repo-url https://git.example.com/acme/app.git --branch main --wait
+
+## cicd progress
+effect: read
+Shows the state of an operation that runs in the background: percent, message and result.
+$ sn cicd progress SYS_ID
+$ sn cicd progress SYS_ID --wait --agent
+
+## sdk
+effect: depends
+Runs the official ServiceNow SDK (`now-sdk`) with the sign-in of the profile, through bunx or npx when it is not installed. Everything after `sdk` goes to now-sdk, which prints its own output, so there is no agent envelope.
+$ sn sdk build
+$ sn sdk install
+$ sn sdk transform --table sys_script
+
+## impersonate
+effect: depends
+Runs one command as another user and then ends the impersonation. Your user needs the admin or impersonator role. Put connection options and `--agent` before `--`.
+$ sn impersonate abel.tuter -- table list incident
+$ sn impersonate abel.tuter --agent -- get me
+
+## api
+Every operation of ServiceNow's public REST reference: 712 operations of 141 APIs, offline. Path parameters, query parameters and body fields are flags. The instance must have the application that provides the API; for a path that is not listed, use `raw`.
+$ sn api search attachment upload
+$ sn api describe change-management list-conflict
+$ sn api change-management list-conflict --sys-id SYS_ID
+
+## api list
+effect: local
+Lists the APIs with their names and how many operations they have.
+$ sn api list
+$ sn api list --agent
+
+## api search
+effect: local
+Finds operations whose name, path or text contains all the words. It needs no instance.
+$ sn api search change conflict
+$ sn api search attachment --method POST --agent
+
+## api describe
+effect: local
+Shows the parameters, the body and the documentation link of one operation. It needs no instance.
+$ sn api describe change-management list-conflict
+$ sn api describe attachment create-file --agent
+
+## raw
+effect: depends
+Calls any path of the instance with the sign-in of the profile. The path must be on the instance; other hosts are refused, so the credential does not leave. Methods other than GET, HEAD and OPTIONS are writes.
+$ sn raw GET '/api/now/table/incident?sysparm_limit=1'
+$ sn raw POST /api/x_acme/v1/hook -D '{"id":1}' --dry-run
+$ sn raw GET /api/now/attachment/SYS_ID/file --out file.bin --agent
+
+## apisearch
+The REST endpoints that this instance publishes, scripted ones too. `api` has the documented ones, offline.
+$ sn apisearch attachment
+$ sn apisearch list --namespace now
+
+## apisearch search
+effect: read
+Finds endpoints by text. The short form is `sn apisearch TEXT`.
+$ sn apisearch search attachment --method POST
+$ sn apisearch search acme --agent
+
+## apisearch list
+effect: read
+Lists the namespaces, or the APIs of one namespace.
+$ sn apisearch list
+$ sn apisearch list --namespace now --agent
+
+## apisearch spec
+effect: read
+Prints the OpenAPI 3 specification of one API, to generate a client or to read its schemas.
+$ sn apisearch spec "Table API" --as yaml > table.yaml
+
+## batch
+effect: depends
+Sends several requests in one round trip and returns each answer with its status. A request that is not a GET is a write. One failed request makes the command fail, and the others still count.
+$ sn batch "GET /api/now/stats/incident?sysparm_count=true" "GET /api/now/ui/user/current_user"
+$ sn batch -D @requests.json --ordered --agent
+
+## ping
+effect: read
+Checks the address, the certificate, the sign-in and the time that a request takes.
+$ sn ping
+$ sn ping --profile prod --agent
+
+## doctor
+effect: read
+Checks the files on this computer, the connection, your roles, and what you name with `--need-...`. A failed check is an error (`check_failed`, exit code 1), so it fits at the start of a script.
+$ sn doctor
+$ sn doctor --need-role itil --need-plugin com.snc.change_management --agent
+
+## update
+effect: local
+Downloads the newest release, checks its SHA-256 checksum, and replaces this program. A copy that Homebrew installed is updated with `brew upgrade`.
+$ sn update
+$ sn update --check --agent
+
+## alias
+Shortcuts that are kept in the configuration file. A built-in command always wins over an alias.
+$ sn alias set p1 "incident list -q priority=1"
+
+## alias list
+effect: local
+Lists the aliases and what they run.
+$ sn alias list
+
+## alias set
+effect: local
+Adds an alias or replaces it. Words after the alias are added to the command.
+$ sn alias set p1 "incident list -q priority=1 --active"
+
+## alias delete
+effect: local
+Removes an alias.
+$ sn alias delete p1
+
+## skill
+effect: local
+Prints the instructions that teach an AI agent these commands, or writes them where the agent looks for skills.
+$ sn skill
+> For Claude Code in this project
+$ sn skill --install
+> For Codex and others
+$ sn skill --install .agents/skills
+
+## introspect
+effect: local
+Prints the command tree as JSON: each command with its summary, effect, examples, arguments, values and defaults. Agents read one command instead of parsing help text.
+$ sn introspect --brief --agent
+$ sn introspect incident resolve --agent
+
+## completions
+effect: local
+Prints a script for your shell. It completes commands, flags and values; after `sn cache refresh` also table and column names.
+$ eval "$(sn completions zsh)"
+$ sn completions fish > ~/.config/fish/completions/sn.fish

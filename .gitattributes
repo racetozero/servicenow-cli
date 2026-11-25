@@ -1,0 +1,3 @@
+# LF on every platform: the skill and the catalog are embedded as they are.
+* text=auto eol=lf
+crates/sn-core/catalog/catalog.json linguist-generated=true

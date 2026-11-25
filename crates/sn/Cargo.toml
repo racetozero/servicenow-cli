@@ -1,0 +1,54 @@
+[package]
+name = "sn"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme = "../../README.md"
+description = "ServiceNow from the terminal: SSO sign-in, every REST API, agent mode, and a full-screen workspace"
+publish = false
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "sn"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+base64.workspace = true
+clap.workspace = true
+clap_complete.workspace = true
+comfy-table.workspace = true
+csv.workspace = true
+dialoguer.workspace = true
+futures-util.workspace = true
+jaq-core.workspace = true
+jaq-json.workspace = true
+jaq-std.workspace = true
+mimalloc.workspace = true
+ratatui.workspace = true
+reqwest.workspace = true
+self-replace.workspace = true
+semver.workspace = true
+rustls.workspace = true
+rustls-platform-verifier.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+serde_yaml_ng.workspace = true
+sn-core.workspace = true
+sn-tui.workspace = true
+tempfile.workspace = true
+tokio.workspace = true
+tokio-tungstenite.workspace = true
+url.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+rustix.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }
+wiremock.workspace = true
