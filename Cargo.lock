@@ -3365,7 +3365,7 @@ checksum = "3244542535d5de959d90ec55d1b5ff0fd2bb7b1310223907d5f11932847f7b59"
 
 [[package]]
 name = "sn"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -3400,7 +3400,7 @@ dependencies = [
 
 [[package]]
 name = "sn-core"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "base64 0.22.1",
  "bytes",
@@ -3422,7 +3422,7 @@ dependencies = [
 
 [[package]]
 name = "sn-tui"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "base64 0.22.1",
  "futures-util",
