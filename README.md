@@ -1,4 +1,11 @@
-# sn
+# ServiceNow CLI - `sn`
+
+[![CI](https://github.com/racetozero/servicenow-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/racetozero/servicenow-cli/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/racetozero/servicenow-cli?sort=semver)](https://github.com/racetozero/servicenow-cli/releases)
+[![Rust](https://img.shields.io/badge/Rust-stable-orange?logo=rust)](https://github.com/racetozero/servicenow-cli/blob/main/rust-toolchain.toml)
+[![Downloads](https://img.shields.io/github/downloads/racetozero/servicenow-cli/total)](https://github.com/racetozero/servicenow-cli/releases)
+[![Homebrew](https://img.shields.io/badge/homebrew-racetozero%2Ftap%2Fsn-fbb040?logo=homebrew)](https://github.com/racetozero/homebrew-tap)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 **ServiceNow from your terminal, for you and your AI agent.**
 
@@ -88,6 +95,37 @@ eval "$(sn completions zsh)"     # bash, zsh, fish, powershell, elvish
 sn cache refresh                 # completes table and column names too
 ```
 
+## Performance
+
+`sn` adds little time to a request. Each time below is one `sn` process, from start to exit, against a mock instance on the same machine that answers at once, so the table shows the cost of `sn` and not of the network.
+
+| Command | p50 | p99 | Peak memory |
+| --- | ---: | ---: | ---: |
+| `sn --version` | 4 ms | 6 ms | 11.9 MiB |
+| `sn --help` | 6 ms | 14 ms | 13.7 MiB |
+| `sn api search attachment` | 7 ms | 11 ms | 18.2 MiB |
+| `sn api describe attachment create-file` | 6 ms | 8 ms | 18.1 MiB |
+| `sn table get task SYS_ID` | 8 ms | 19 ms | 16.0 MiB |
+| `sn table list change_request -n 300 -o table` | 9 ms | 24 ms | 16.2 MiB |
+| `sn table list problem -n 1000 --agent` | 11 ms | 17 ms | 17.0 MiB |
+
+Measured on an Apple M4 (10 cores) with macOS 27 and the `dist` release build: 300 runs of each local command and 200 of each command that calls the instance, after 10 warmups. Peak memory is the median peak resident memory.
+
+### Profile-guided release builds
+
+Release binaries are built with profile-guided optimization (PGO). The release workflow trains a profile on deterministic offline workloads, then measures the result on separate held-out commands (`just pgo-bench`).
+
+| Measure | Standard build | Optimized build | Change |
+| --- | ---: | ---: | ---: |
+| `sn cicd updateset --help` | 6.46 ms | 6.43 ms | 0.39% faster |
+| `sn api describe` | 9.32 ms | 8.77 ms | 5.88% faster |
+| `sn table list problem -n 1000` | 14.10 ms | 13.83 ms | 1.88% faster |
+| `sn table list change_request -o table` | 8.92 ms | 9.00 ms | 1.00% slower |
+| `sn table get task` | 8.35 ms | 8.06 ms | 3.53% faster |
+| Geometric mean latency | 1.000x | 0.978x | 2.17% faster |
+| Executable size | 14.28 MiB | 13.39 MiB | 6.27% smaller |
+| gzip size | 6.43 MiB | 6.09 MiB | 5.20% smaller |
+
 ## License
 
-MIT. The API catalog is derived from ServiceNow's documentation (Apache-2.0); see [NOTICE](NOTICE). This project is not affiliated with ServiceNow.
+MIT
