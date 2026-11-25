@@ -291,9 +291,17 @@ async fn an_instance_without_the_client_is_explained_before_a_browser_opens() {
 
 async fn signed_in(server: &MockServer) -> Cli {
     let cli = Cli::empty();
-    cli.run(&["auth", "login", "--instance", &server.uri(), "--agent"])
-        .await
-        .ok();
+    let uri = server.uri();
+    let args = [
+        "auth",
+        "login",
+        "--instance",
+        &uri,
+        "--store",
+        "file",
+        "--agent",
+    ];
+    cli.run(&args).await.ok();
     cli.run(&["auth", "login", "--code", "the+code", "--agent"])
         .await
         .ok();

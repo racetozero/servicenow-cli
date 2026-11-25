@@ -319,7 +319,7 @@ impl Store {
 
     pub fn secrets(&self, name: &str, profile: &Profile) -> Result<Secrets> {
         if profile.store_kind() == StoreKind::Keychain
-            && let Some(text) = keychain_get(name)
+            && let Some(text) = keychain_get(&self.keychain_account(name))
         {
             return serde_json::from_str(&text).map_err(|err| {
                 Error::invalid(format!(
@@ -329,6 +329,12 @@ impl Store {
         }
         let mut file: CredentialsFile = read_toml(&self.credentials_path())?;
         Ok(file.profiles.remove(name).unwrap_or_default())
+    }
+
+    /// Two configuration directories can have profiles of the same name.
+    fn keychain_account(&self, name: &str) -> String {
+        let dir = std::path::absolute(&self.dir).unwrap_or_else(|_| self.dir.clone());
+        format!("{name}@{}", dir.display())
     }
 
     /// Writes the secrets. A credential store that refuses (too large, not
@@ -341,11 +347,13 @@ impl Store {
     ) -> Result<StoreKind> {
         let kind = profile.store_kind();
         let empty = *secrets == Secrets::default();
+        let account = self.keychain_account(name);
         let in_keychain = kind == StoreKind::Keychain
             && !empty
-            && keychain_set(name, &serde_json::to_string(secrets)?);
-        if empty && kind == StoreKind::Keychain {
-            keychain_delete(name);
+            && keychain_set(&account, &serde_json::to_string(secrets)?);
+        // An older entry would hide what the file holds.
+        if kind == StoreKind::Keychain && !in_keychain {
+            keychain_delete(&account);
         }
         let path = self.credentials_path();
         let mut file: CredentialsFile = read_toml(&path)?;
@@ -652,6 +660,13 @@ fn keychain_delete(name: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn profiles_of_two_directories_have_their_own_keychain_account() {
+        let account = |dir: &str| Store::at(dir).keychain_account("default");
+        assert_ne!(account("a"), account("b"));
+        assert_eq!(account("a"), account("./a"));
+    }
 
     #[test]
     fn instances_normalize_and_reject_clear_text() {
