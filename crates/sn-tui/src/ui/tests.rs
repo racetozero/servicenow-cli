@@ -382,6 +382,31 @@ fn without_color_nothing_is_colored() {
 }
 
 #[test]
+fn only_words_are_underlined() {
+    // Wide enough that the record stands beside the list it does not have focus in.
+    let wide = ("wide", started(200, 50));
+    for (name, mut app) in states().into_iter().chain([wide]) {
+        for (width, height) in [(80, 24), (160, 50)] {
+            let buffer = buffer(&mut app, width, height);
+            for (y, row) in buffer.content.chunks(width as usize).enumerate() {
+                // The spaces between words may be underlined, the ones around them not.
+                for run in row
+                    .split(|cell| !cell.modifier.contains(Modifier::UNDERLINED))
+                    .filter(|run| !run.is_empty())
+                {
+                    let words: String = run.iter().map(|cell| cell.symbol()).collect();
+                    assert_eq!(
+                        words.trim(),
+                        words,
+                        "{name} at {width}x{height}, row {y}: spaces are underlined"
+                    );
+                }
+            }
+        }
+    }
+}
+
+#[test]
 fn no_text_of_a_record_reaches_the_terminal_raw() {
     let mut app = started(160, 50);
     for key in ["1", "2", "3"] {

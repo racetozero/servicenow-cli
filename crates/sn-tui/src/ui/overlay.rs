@@ -694,21 +694,21 @@ impl Pen<'_, '_> {
             let mut spans = vec![bar, Span::styled(join, t.dim())];
             match &condition.raw {
                 Some(raw) => {
-                    spans.push(Span::styled(
-                        text::cut(raw, width.saturating_sub(7), t.g.ellipsis),
+                    spans.extend(Pen::underlined(
+                        &text::cut(raw, width.saturating_sub(7), t.g.ellipsis),
                         cell(filter.column),
                     ));
                     self.put(spot, Line::from(spans));
                 }
                 None => {
                     let label = &app.field(&filter.table, &condition.field).label;
-                    spans.push(Span::styled(
-                        text::fit(label, field_width, t.g.ellipsis),
+                    spans.extend(Pen::underlined(
+                        &text::fit(label, field_width, t.g.ellipsis),
                         cell(0),
                     ));
                     spans.push(Span::raw(" "));
-                    spans.push(Span::styled(
-                        text::fit(condition.op.label(), op_width, t.g.ellipsis),
+                    spans.extend(Pen::underlined(
+                        &text::fit(condition.op.label(), op_width, t.g.ellipsis),
                         match here && filter.column == 1 {
                             true => cell(1),
                             false => t.dim(),
@@ -716,17 +716,17 @@ impl Pen<'_, '_> {
                     ));
                     spans.push(Span::raw(" "));
                     if condition.op.needs_value() {
-                        spans.push(match condition.label.is_empty() {
-                            true => Span::styled("choose a value", t.warning()),
-                            false => Span::styled(
-                                text::cut(
+                        match condition.label.is_empty() {
+                            true => spans.push(Span::styled("choose a value", t.warning())),
+                            false => spans.extend(Pen::underlined(
+                                &text::cut(
                                     &text::line(&condition.label),
                                     value_spot.width as usize,
                                     t.g.ellipsis,
                                 ),
                                 cell(2),
-                            ),
-                        });
+                            )),
+                        }
                     }
                     self.put(spot, Line::from(spans));
                 }

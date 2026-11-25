@@ -288,7 +288,7 @@ impl Pen<'_, '_> {
             };
             let gap = u16::from(airy || !all);
             x = x.saturating_add(text::width(&label) as u16 + gap);
-            self.put(spot, Line::styled(label, style));
+            self.put(spot, Line::from(Vec::from(Pen::underlined(&label, style))));
             self.hit(spot, Hit::Tab(tab));
         }
     }
@@ -515,7 +515,10 @@ impl Pen<'_, '_> {
                 let (shown, _) = inline.editor.window(spot.width as usize);
                 self.put(
                     spot,
-                    Line::styled(text::fit(&shown, spot.width as usize, ""), style),
+                    Line::from(Vec::from(Pen::underlined(
+                        &text::fit(&shown, spot.width as usize, ""),
+                        style,
+                    ))),
                 );
                 let (_, column) = inline.editor.window(spot.width as usize);
                 if !spot.is_empty() && app.overlays.is_empty() {

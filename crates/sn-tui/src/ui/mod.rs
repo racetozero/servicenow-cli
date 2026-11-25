@@ -141,6 +141,18 @@ impl Pen<'_, '_> {
         self.toasts(area);
     }
 
+    /// `text` in `style`, but the spaces around its words are not underlined.
+    pub fn underlined(text: &str, style: Style) -> [Span<'static>; 3] {
+        let words = text.trim();
+        let start = text.len() - text.trim_start().len();
+        let around = style.remove_modifier(Modifier::UNDERLINED);
+        [
+            Span::styled(text[..start].to_owned(), around),
+            Span::styled(words.to_owned(), style),
+            Span::styled(text[start + words.len()..].to_owned(), around),
+        ]
+    }
+
     pub fn put(&mut self, area: Rect, line: impl Into<Line<'static>>) {
         if !area.is_empty() {
             self.frame.render_widget(line.into(), area);
